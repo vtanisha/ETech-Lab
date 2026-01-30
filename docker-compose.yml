@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: ankane/pgvector:latest
+    container_name: credirisk-db
+    environment:
+      POSTGRES_USER: credirisk
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: credirisk_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - credirisk_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: credirisk-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://credirisk:password123@db:5432/credirisk_db
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - credirisk_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_TABLEAU_REPORT_URL: ${VITE_TABLEAU_REPORT_URL:-https://public.tableau.com/views/YourDashboard/Name}
+    container_name: credirisk-frontend
+    ports:
+      - "80:80"
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - credirisk_network
+
+volumes:
+  postgres_data:
+
+networks:
+  credirisk_network:
+    driver: bridge
